@@ -9,6 +9,9 @@ _begin:
   mrs x1, mpidr_el1
   and x1, x1, #0x3
   cbnz x1, continue 
+  # save atag address (device tree)
+  ldr x1, =atag
+  str x0, [x1]
   # initialize .bss
   ldr x1, =__bss_start
   ldr x2, =__bss_end
@@ -45,8 +48,7 @@ _begin:
     mov sp, x1
     bl entry
 
-.section .data
-
-.align 16
-.globl _start
-_start: .8byte 0
+    # In case entry ever returns
+    halt:
+      wfe
+      b halt

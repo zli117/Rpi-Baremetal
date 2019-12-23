@@ -42,7 +42,7 @@ void led_spin_lock() {
 
 void led_spin_unlock() {
   // __sync_lock_release(&led_lock);
-  asm volatile("stlr	%w1, [%0]\n" : : "r"(&led_lock), "r"(0) : "memory");
+  asm volatile("stlr %w1, [%0]\n" : : "r"(&led_lock), "r"(0) : "memory");
 }
 
 void delay() {
@@ -101,16 +101,6 @@ void long_delay() {
     ;
 }
 
-uint64 inline_get_cpu_id() {
-  uint64 cpu_id;
-  asm("mrs %0, mpidr_el1\n"
-      "and %0, %0, #0x3\n"
-      : "=r"(cpu_id));
-  return cpu_id;
-}
-
-extern uint64 _start;
-
 void release_cpu() {
   // Release other cores
   volatile uint64* spin_cpu0 = (uint64*)(0xd8);
@@ -121,7 +111,7 @@ void release_cpu() {
 }
 
 void entry() {
-  uint64 cpu_id = inline_get_cpu_id();
+  uint64 cpu_id = get_cpu_id();
 
   if (cpu_id == 0x0) {
     led_init();
