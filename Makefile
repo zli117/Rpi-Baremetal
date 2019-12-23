@@ -1,4 +1,4 @@
-CFLAGS = -Wall -O0 -ffreestanding -nostdinc -nolibc -nostdlib -nostartfiles -I.
+CFLAGS = -Wall -O2 -ffreestanding -nostdinc -nolibc -nostdlib -nostartfiles -I.
 
 CC_SRC = $(wildcard *.cc)
 S_SRC = $(wildcard *.S)
