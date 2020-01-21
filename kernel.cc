@@ -1,11 +1,13 @@
 #include <asm_utils.h>
 #include <data.h>
 #include <kernel.h>
+#include <memory.h>
 
-#define PERI_BASE 0x3F000000
-#define GPFSEL1 (0x200004 + PERI_BASE)
-#define GPSET0 (0x20001C + PERI_BASE)
-#define GPCLR0 (0x200028 + PERI_BASE)
+#define P_PERI_BASE 0x3F000000
+#define V_PERI_BASE (P_PERI_BASE + 0xffff000000000000)
+#define GPFSEL1 (0x200004 + V_PERI_BASE)
+#define GPSET0 (0x20001C + V_PERI_BASE)
+#define GPCLR0 (0x200028 + V_PERI_BASE)
 
 static uint8 core_to_led[] = {16, 17, 18, 19};
 
@@ -110,42 +112,19 @@ void release_cpu() {
   asm volatile("sev");
 }
 
-void entry() {
-  uint64 cpu_id = get_cpu_id();
-
-  if (cpu_id == 0x0) {
-    led_init();
-    release_cpu();
-    for (uint32 i = 0; i < 4; ++i) {
-      led_signals[i] = 0;
-    }
-  } else {
-    // Wait for initialization to finish
-    while (led_signals[cpu_id])
-      ;
-  }
+void el1_entry(uint64* v_atag_addr, uint64* v_ttbr1_el1, uint64 cpu_id) {
+  // Setup mapping to GPIO (device memory)
+  uint64 page_index = (P_PERI_BASE & (TWO_MB - 1)) + 1;
+  v_ttbr1_el1[page_index] = (page_index << 21) | CONTIGUOUS | NG | AF |
+                            OUTER_SHARABLE | READ_WRITE | BLOCK;
+  asm volatile(
+      "isb\n"
+      "tlbi alle1\n");
+  led_init();
   while (true) {
+    led_on(cpu_id);
     long_delay();
-    led_signals[cpu_id] = 1;
-    if (cpu_id == 0x0) {
-      for (uint32 i = 0; i < 4; ++i) {
-        if (led_signals[i] > 0) {
-          led_on(i);
-        } else {
-          led_off(i);
-        }
-      }
-    }
+    led_off(cpu_id);
     long_delay();
-    led_signals[cpu_id] = 0;
-    if (cpu_id == 0x0) {
-      for (uint32 i = 0; i < 4; ++i) {
-        if (led_signals[i] > 0) {
-          led_on(i);
-        } else {
-          led_off(i);
-        }
-      }
-    }
   }
 }

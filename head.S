@@ -1,4 +1,4 @@
-#define STACK_SIZE 4096
+#include <memory.h>
 
 .section .text.boot
 
@@ -10,11 +10,10 @@ _begin:
   and x1, x1, #0x3
   cbnz x1, continue 
   # save atag address (device tree)
-  ldr x1, =atag
-  str x0, [x1]
+  mov x5, x0
   # initialize .bss
-  ldr x1, =__bss_start
-  ldr x2, =__bss_end
+  ldr x1, =_p_bss_start
+  ldr x2, =_p_bss_end
   loop:
     str xzr, [x1]
     add x1, x1, #8
@@ -43,12 +42,17 @@ _begin:
     add x1, x1, #1
     mov x2, #STACK_SIZE
     mul x2, x1, x2
-    ldr x1, =_bin_end
+    ldr x1, =_p_bin_end
     add x1, x1, x2
     mov sp, x1
-    bl entry
 
-    # In case entry ever returns
+    # load parameters for el2_entry
+    mrs x1, mpidr_el1
+    and x1, x1, #0x3
+    mov x0, x5
+    bl el2_entry
+
+    # In case el2_entry ever returns
     halt:
       wfe
       b halt
